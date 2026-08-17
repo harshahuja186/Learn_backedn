@@ -4,6 +4,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./src/config/database");
 const { connectRedis } = require("./src/config/redis");
+const { closeQueues } = require("./src/config/bullmq");
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -65,3 +66,16 @@ const startServer = async () => {
 };
 
 startServer();
+
+const shutdown = async (signal) => {
+  console.log(`\n${signal} received, closing BullMQ queues...`);
+  try {
+    await closeQueues();
+  } catch (error) {
+    console.error("Error closing queues:", error.message);
+  }
+  process.exit(0);
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

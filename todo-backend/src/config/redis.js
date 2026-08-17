@@ -2,17 +2,24 @@ const { createClient } = require("redis");
 
 let redisClient = null;
 
+// Shared credentials for node-redis (cache/rate-limit) and ioredis (BullMQ).
+const getRedisConnection = () => ({
+  host: process.env.REDIS_HOST,
+  port: Number(process.env.REDIS_PORT),
+  username: process.env.REDIS_USERNAME,
+  password: process.env.REDIS_PASSWORD,
+});
+
 const connectRedis = async () => {
   try {
+    const { host, port, username, password } = getRedisConnection();
+
     redisClient = createClient({
-      username: process.env.REDIS_USERNAME || "default",
-      password:
-        process.env.REDIS_PASSWORD || "y1Hpd7kIpSy8n0BbFHAl2cgUvinlDOy1",
+      username,
+      password,
       socket: {
-        host:
-          process.env.REDIS_HOST ||
-          "redis-10217.c305.ap-south-1-1.ec2.cloud.redislabs.com",
-        port: process.env.REDIS_PORT || 10217,
+        host,
+        port,
       },
     });
 
@@ -32,4 +39,4 @@ const connectRedis = async () => {
 
 const getRedisClient = () => redisClient;
 
-module.exports = { connectRedis, getRedisClient };
+module.exports = { connectRedis, getRedisClient, getRedisConnection };
