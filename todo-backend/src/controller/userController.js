@@ -1,6 +1,9 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const ms = require("ms");
+const { getRedisClient } = require("../config/redis");
+
+const STREAM = process.env.STREAM;
 
 // Generate JWT Token
 const generateToken = (data, type = "access") => {
@@ -169,6 +172,16 @@ exports.login = async (req, res) => {
     };
 
     sendTokens(res, tokenData);
+
+    // Redis stream field values must be strings/Buffers — stringify nested payloads.
+    await getRedisClient().xAdd(STREAM, "*", {
+      project: "todo",
+      event: "login",
+      data: JSON.stringify({
+        userId: String(user._id),
+        email: user.email,
+      }),
+    });
 
     res.status(200).json({
       success: true,
