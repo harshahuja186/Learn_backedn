@@ -4,6 +4,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./src/config/database");
 const { connectRedis } = require("./src/config/redis");
+const { connectRabbit, closeRabbit } = require("./src/config/rabbitmq");
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -50,6 +51,7 @@ const startServer = async () => {
   try {
     await connectDB();
     await connectRedis();
+    await connectRabbit();
     initRateLimiters();
 
     app.listen(PORT, () => {
@@ -65,3 +67,16 @@ const startServer = async () => {
 };
 
 startServer();
+
+const shutdown = async (signal) => {
+  console.log(`\n${signal} received, closing RabbitMQ...`);
+  try {
+    await closeRabbit();
+  } catch (error) {
+    console.error("Error closing RabbitMQ:", error.message);
+  }
+  process.exit(0);
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

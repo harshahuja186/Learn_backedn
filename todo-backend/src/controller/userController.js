@@ -1,9 +1,11 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const ms = require("ms");
-const { getRedisClient } = require("../config/redis");
-
-const STREAM = process.env.STREAM;
+const { publishMessage } = require("../queues/todoRabbit");
+const {
+  RABBIT_EXCHANGES,
+  RABBIT_ROUTING_KEYS,
+} = require("../constants/rabbitmq");
 
 // Generate JWT Token
 const generateToken = (data, type = "access") => {
@@ -114,6 +116,16 @@ exports.register = async (req, res) => {
 
     sendTokens(res, tokenData);
 
+    await publishMessage(
+      RABBIT_EXCHANGES.TODO.name,
+      RABBIT_ROUTING_KEYS.SIGNUP,
+      {
+        userId: String(user._id),
+        email: user.email,
+        name: user.name,
+      },
+    );
+
     res.status(201).json({
       success: true,
       message: "User registered successfully",
@@ -173,15 +185,14 @@ exports.login = async (req, res) => {
 
     sendTokens(res, tokenData);
 
-    // Redis stream field values must be strings/Buffers — stringify nested payloads.
-    await getRedisClient().xAdd(STREAM, "*", {
-      project: "todo",
-      event: "login",
-      data: JSON.stringify({
+    await publishMessage(
+      RABBIT_EXCHANGES.TODO.name,
+      RABBIT_ROUTING_KEYS.LOGIN,
+      {
         userId: String(user._id),
         email: user.email,
-      }),
-    });
+      },
+    );
 
     res.status(200).json({
       success: true,
